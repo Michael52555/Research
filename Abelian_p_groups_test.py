@@ -136,9 +136,9 @@ def test_many_H(p, exps, target_H_type, target_Q_type, max_subgroups=10):
 
 # Example model test:
 p = 2
-exps = [4, 2, 1]
-target_H_type = (3, 1)
-target_Q_type = (2, 1)
+exps = [5, 3, 2]
+target_H_type = (4, 2)
+target_Q_type = (3, 1)
 
 out = test_many_H(p, exps, target_H_type, target_Q_type, max_subgroups=8)
 for (g1, g2, H_size, stab_cnt) in out:
