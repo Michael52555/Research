@@ -32,7 +32,7 @@ def build_support_masks(mapping, stindic, indic, outdic, pos, size, total):
         state[i][j] = 1
 
         # forced-solved region (your pos rule)
-        if pos[j+1] > pos[i+1]:
+        if pos[j+1] >= pos[i+1]:
             support[i][j] = 0
             state[i][j] = 2
             return 0
@@ -57,7 +57,7 @@ def build_support_masks(mapping, stindic, indic, outdic, pos, size, total):
 
         mask = 0
         for (u, v) in deps:
-            mask ^= dfs(u, v)
+            mask |= dfs(u, v)
 
         support[i][j] = mask
         state[i][j] = 2
@@ -70,6 +70,18 @@ def build_support_masks(mapping, stindic, indic, outdic, pos, size, total):
 
     return support
 
+def gf2_rank(masks):
+    pivots = {}
+    for x in masks:
+        v = x
+        while v:
+            b = v.bit_length() - 1
+            if b in pivots:
+                v ^= pivots[b]
+            else:
+                pivots[b] = v
+                break
+    return len(pivots)
 
 def fast_experiment(mapping, arrows, starrows, pos, size, total, mu):
     stindic = {a: -1 for a in range(size)}
@@ -77,35 +89,42 @@ def fast_experiment(mapping, arrows, starrows, pos, size, total, mu):
     indic = {a: [] for a in range(size)}
     outdic = {a: [] for a in range(size)}
 
-    for a,b in arrows:
+    for (a,b) in arrows:
         indic[b-1].append(a-1)
         outdic[a-1].append(b-1)
 
-    for a,b in starrows:
+    for (a,b) in starrows:
         stindic[b-1] = a-1
         stoutdic[a-1] = b-1
 
     support = build_support_masks(mapping, stindic, indic, outdic, pos, size, total)
 
+    U = set(range(size))
+    forbidden = []
+    for i in mu:
+        for j in U - mu:
+            if support[i][j]:
+                forbidden.append((i,j,support[i][j]))
+    print(len(forbidden))
+    print(forbidden[:20])
+
     # Only check forbidden block cells that could ever become nonzero
     forbidden = []
-    for i in range(mu):
-        for j in range(mu, size):
+    for i in mu:
+        for j in set(range(size))-mu:
             m = support[i][j]
             if m != 0:
                 forbidden.append(m)
+    # used = 0
+    # for m in forbidden:
+    #     used |= m
+    # unused = total - used.bit_count()$
+    # print("len(forbidden) =", len(forbidden),
+    #     "rank =", gf2_rank(forbidden),
+    #     "unused_vars =", unused)
 
-    ans = 0
-    for bits in range(1 << total):
-        ok = True
-        for m in forbidden:
-
-            if ((m & bits).bit_count() & 1) == 1:
-                ok = False
-                break
-        if ok:
-            ans += 1
-    return ans
+    r = gf2_rank(forbidden)
+    return 1 << (total - r)
 
 #
 
@@ -120,18 +139,50 @@ def fast_experiment(mapping, arrows, starrows, pos, size, total, mu):
 # pos = {1: 1, 2: 1, 5: 1, 3: 2, 6: 2, 7: 2, 4: 3, 8: 4}
 
 
-mapping = [(9,1), (9,2), (9,7), (9,3), (9,4), (9, 9), (8,1), (8,2), (8,7), (8,3), (8,4), (8, 9), (8,5), (8,8), (10,1), (10,2), (10,7), (10,3), (10,4), (10, 9), (10,5), (10,8), (10, 6), (10,10)]
-arrows = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7), (10, 9), (10, 8)]
-starrows = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7)]
+mapping = []
 
-arrows_1 = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7), (10, 9)]
-arrows_2 = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7), (10, 9), (10, 8), (10, 7)]
+# for i in range(6):
+#     mapping.append((6, i+1))
+# for i in range(8):
+#     mapping.append((8, i+1))
+# for i in range(10):
+#     mapping.append((10, i+1))
+# # for i in range(11):
+# #     mapping.append((11, i+1))
 
-pos = {1: 1, 2: 1, 7: 1, 3: 2, 4: 2, 9: 2, 5: 3, 8: 3, 6: 4, 10: 5}
+for i in range(4):
+    mapping.append((4, i+1))
+for i in range(7):
+    mapping.append((7, i+1))
+for i in range(9):
+    mapping.append((9, i+1))
+for i in range(11):
+    mapping.append((11, i+1))
 
-print(fast_experiment(mapping, arrows, starrows, pos, 10, 24, 6))
-print(fast_experiment(mapping, arrows_1, starrows, pos, 10, 24, 6))
-print(fast_experiment(mapping, arrows_2, starrows, pos, 10, 24, 6))
+
+# arrows = [(4,1), (7,4), (9, 7), (10, 9), (5, 2), (8,5), (6,3), (10,6)]
+# starrows = [(4,1), (7,4), (9, 7), (10, 9), (5, 2), (8,5), (6,3)]
+
+# arrows_1 = [(4,1), (7,4), (9, 7), (10, 9), (5, 2), (8,5), (6,3), (10,6), (10, 8)]
+
+
+
+# arrows_1 = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7), (10, 6)]
+# arrows_2 = [(3,1), (5,3), (6,5), (10,6), (4,2), (8,4), (9, 7), (10, 9), (10, 8), (10, 7)]
+
+starrows = [(5,1), (8,5), (10,8), (11, 10), (6,2), (9, 6), (7,3)]
+arrows = [(5,1), (8,5), (10,8), (11, 10), (6,2), (9, 6), (7,3), (10,7), (9,4)]
+
+# pos = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9:4, 10: 5}
+
+pos = {1: 1, 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9:3, 10: 4, 11:5}
+
+print(fast_experiment(mapping, arrows, starrows, pos, 11, 31, {0, 1, 4, 5, 7}))
+# print(fast_experiment(mapping, arrows_1, starrows, pos, 10, 24, {0, 1, 3, 4, 6, 8}))
+# print(fast_experiment(mapping, arrows, starrows, pos, 10, 24, {0, 1, 3, 4, 6, 8}))
+
+
+
 
 # mapping = [(5, 1), (5, 2), (5, 5), (6, 1), (6, 2), (6, 5), (6, 3), (6, 6), (7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7)]
 # arrows = [(3, 1), (4, 3), (6, 2), (7, 4), (7, 5), (7,6)]
